@@ -1,0 +1,94 @@
+on:
+  schedule:
+    - cron: 0 4,16 * * *
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+env:
+  download_tag: Prerelease-Alpha
+  download_version: ''
+  download_url: https://github.com/MetaCubeX/Clash.Meta/releases/download
+jobs:
+  Update:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@main
+    - name: Download Upx
+      run: |
+        upx_tag=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | grep tag_name | awk -F'"' '{print $4}')
+        upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | grep tag_name | awk -F'"' '{print $4}' | awk -F 'v' '{print $2}')
+        echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
+        curl -kfsL https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -o-| tar -xJ
+    - name: Download&Compress Core
+      run: |
+        mkdir -p publish
+        if [ "${download_tag}" = "Prerelease-Alpha" ] || [ "${download_tag}" = "Prerelease-Beta" ];then
+          download_version=$(curl -sL https://api.github.com/repos/MetaCubeX/Clash.Meta/releases/tags/${download_tag} | grep linux-arm64 | head -n 1 | sed 's_.gz.*__;s_.*arm64-__')
+        else
+          download_version=${download_tag}
+        fi
+        echo "download_version=${download_version}" >> ${GITHUB_ENV}
+        archs=(amd64-compatible armv5 armv7 arm64 mips-softfloat mipsle-hardfloat mipsle-softfloat)
+        new_name=(amd64 armv5 armv7 armv8 mips-softfloat mipsle-hardfloat mipsle-softfloat)
+        for((i=0;i<7;i++));do
+          curl -kfsL ${download_url}/${download_tag}/clash.meta-linux-${archs[i]}-${download_version}.gz -o-| gunzip -c > ./publish/clash-linux-${new_name[i]}
+          chmod +x ./publish/clash-linux-${new_name[i]}
+          if [ "${archs[i]}" != "armv5" ];then
+            if [[ ${archs[i]} = mips* ]];then
+              ./upx-${upx_version}-amd64_linux/upx ./publish/clash-linux-${new_name[i]}
+            else
+              ./upx-${upx_version}-amd64_linux/upx ./publish/clash-linux-${new_name[i]}
+            fi
+          fi
+        done
+        curl -kfsOL ${download_url}/${download_tag}/clash.meta-windows-amd64-compatible-${download_version}.zip
+        unzip -o clash.meta-windows-amd64-compatible-${download_version}.zip
+        rm -rf clash.meta-windows-amd64-compatible-${download_version}.zip
+        mv clash.meta-windows-amd64-compatible.exe ./publish/clash-winamd64v1.exe
+        ./upx-${upx_version}-amd64_linux/upx ./publish/clash-winamd64v1.exe
+    - name: Repack XD
+      run: |
+        xd_version=$(curl -sSL https://api.github.com/repos/MetaCubeX/metacubexd/releases/latest | grep tag_name | awk -F'"' '{print $4}')
+        echo "xd_version=${xd_version}" >> ${GITHUB_ENV}
+        mkdir -p xd
+        cd xd
+        curl -kfSL -o xd.zip https://github.com/MetaCubeX/metacubexd/releases/download/${xd_version}/dist.zip
+        unzip -o xd.zip > /dev/null
+        tar -zcvf xd.tar.gz --exclude=xd.zip * > /dev/null
+        mv xd.tar.gz ../publish
+    - name: Delete current release assets
+      uses: andreaswilli/delete-release-assets-action@v3.0.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        tag: latest
+        deleteOnlyFromDrafts: false
+    - run: |
+        cat > release.txt << 'EOF'
+        Core=${{ env.download_version }}
+        XD=${{ env.xd_version }}
+        EOF
+    - name: Release and upload assets
+      uses: softprops/action-gh-release@v1
+      with:
+        name: latest
+        tag_name: latest
+        draft: false
+        prerelease: false
+        body_path: release.txt
+        files: |
+          ./publish/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Purge jsdelivr CDN
+      run: |
+        cd publish || exit 1
+        for file in $(ls); do
+          curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${file}"
+        done
+    - name: Cleanup Workflow
+      uses: Mattraks/delete-workflow-runs@main
+      with:
+        retain_days: 1
+        keep_minimum_runs: 1
