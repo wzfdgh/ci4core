@@ -1,0 +1,143 @@
+on:
+  schedule:
+    - cron: 0 7,15,23 * * *
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+env:
+  download_tag: Prerelease-Alpha
+  download_version: ''
+  name: mihomo
+  download_url: https://github.com/MetaCubeX/mihomo/releases/download
+jobs:
+  Action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Get version
+        run: |
+          if [ "${download_tag}" = "Prerelease-Alpha" ] || [ "${download_tag}" = "Prerelease-Beta" ];then
+            download_version=$(curl -sSL ${download_url}/Prerelease-Alpha/version.txt)
+          else
+            download_version=${download_tag}
+          fi
+          echo "download_version=${download_version}" >> ${GITHUB_ENV}
+          if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '"' '/body/ {split($4, v, "=" ); print v[2]}')" = "${download_version}" ];then
+            exit 1
+          fi
+          mkdir -p publish
+      - name: Download upx
+        run: |
+          upx_tag=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}')
+          upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}' | awk -F 'v' '{print $2}')
+          echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
+          wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -xJ
+          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -xJ
+#          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -xJ
+      - name: linux
+        run: |
+          archs=(amd64 amd64-compatible armv7 arm64) # armv5 armv6 mips64 mips64le mips-softfloat mips-hardfloat mipsle-softfloat mipsle-hardfloat 386 riscv64 loong64
+          for((i=0;i<4;i++));do
+            wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
+            chmod +x ./publish/clash.meta-linux-${archs[i]}
+            if [ "${archs[i]}" != "armv5" ];then
+              if [[ ${archs[i]} = mips* ]];then
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-linux-${archs[i]}
+              else
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-linux-${archs[i]}
+              fi
+            fi
+          done
+#      - name: freebsd
+#        run: |
+#          archs=() # 386 amd64 arm64
+#          for((i=0;i<0;i++));do
+#            wget ${download_url}/${download_tag}/${name}-freebsd-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-freebsd-${archs[i]}
+#            chmod +x ./publish/clash.meta-freebsd-${new_name[i]}
+#            if [ "${archs[i]}" != "armv5" ];then
+#              if [[ ${archs[i]} = mips* ]];then
+#                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-freebsd-${archs[i]}
+#              else
+#                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-freebsd-${archs[i]}
+#              fi
+#            fi
+#          done
+      - name: windows
+        run: |
+          archs=(amd64-compatible amd64) # 386 arm64 arm32v7
+          for((i=0;i<2;i++));do
+            wget ${download_url}/${download_tag}/${name}-windows-${archs[i]}-${download_version}.zip
+            unzip -o ${name}-windows-${archs[i]}-${download_version}.zip
+            mv ${name}-windows-${archs[i]}.exe ./publish/clash.meta-windows-${archs[i]}.exe
+            chmod +x ./publish/clash.meta-windows-${archs[i]}.exe
+            if [ "${archs[i]}" != "armv5" ];then
+              if [[ ${archs[i]} = mips* ]];then
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
+              else
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
+              fi
+            fi
+          done
+#      - name: darwin
+#        run: |
+#          archs=() # amd64 arm64
+#          for((i=0;i<0;i++));do
+#            wget ${download_url}/${download_tag}/${name}-darwin-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-darwin-${archs[i]}
+#            chmod +x ./publish/clash.meta-darwin-${new_name[i]}
+#            if [ "${archs[i]}" != "armv5" ];then
+#              if [[ ${archs[i]} = mips* ]];then
+#                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
+#              else
+#                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
+#              fi
+#            fi
+#          done
+      - name: android
+        run: |
+          wget ${download_url}/${download_tag}/${name}-android-arm64-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-android-arm64
+          chmod +x ./publish/clash.meta-android-arm64
+          ./upx-3.95-amd64_linux/upx ./publish/clash.meta-android-arm64
+      - name: Delete current release assets
+        uses: andreaswilli/delete-release-assets-action@v3.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest
+          deleteOnlyFromDrafts: false
+      - name: Release and upload assets
+        id: upload_release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          release_name: latest
+          tag: latest
+          file_glob: true
+          overwrite: true
+          file: ./publish/*
+          body: Core=${{ env.download_version }}
+      - name: Git push assets to "release" branch
+        run: |
+          cd publish || exit 1
+          git init
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b release
+          git add .
+          git commit -m release
+          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git push -f -u origin release
+      - name: Purge jsdelivr CDN
+        run: |
+          cd publish || exit 1
+          for file in $(ls); do
+            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${file}"
+          done
+  Cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cleanup Workflow
+        uses: Mattraks/delete-workflow-runs@main
+        with:
+          retain_days: 0
+          keep_minimum_runs: 1
