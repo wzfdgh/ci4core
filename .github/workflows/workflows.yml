@@ -33,13 +33,13 @@ jobs:
           upx_tag=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}')
           upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}' | awk -F 'v' '{print $2}')
           echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
-          wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -xJ
-          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -xJ
-#          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -xJ
+          wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -xz
+          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -xz
+#          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -xz
       - name: linux
         run: |
           archs=(amd64 amd64-compatible armv7 arm64) # armv5 armv6 mips64 mips64le mips-softfloat mips-hardfloat mipsle-softfloat mipsle-hardfloat 386 riscv64 loong64
-          for((i=0;i<4;i++));do
+          for((i=0;i<${#arch[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
             chmod +x ./publish/clash.meta-linux-${archs[i]}
             if [ "${archs[i]}" != "armv5" ];then
@@ -53,7 +53,7 @@ jobs:
 #      - name: freebsd
 #        run: |
 #          archs=() # 386 amd64 arm64
-#          for((i=0;i<0;i++));do
+#          for((i=0;i<${#arch[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-freebsd-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-freebsd-${archs[i]}
 #            chmod +x ./publish/clash.meta-freebsd-${new_name[i]}
 #            if [ "${archs[i]}" != "armv5" ];then
@@ -67,31 +67,27 @@ jobs:
       - name: windows
         run: |
           archs=(amd64-compatible amd64) # 386 arm64 arm32v7
-          for((i=0;i<2;i++));do
+          for((i=0;i<${#arch[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-windows-${archs[i]}-${download_version}.zip
             unzip -o ${name}-windows-${archs[i]}-${download_version}.zip
             mv ${name}-windows-${archs[i]}.exe ./publish/clash.meta-windows-${archs[i]}.exe
             chmod +x ./publish/clash.meta-windows-${archs[i]}.exe
-            if [ "${archs[i]}" != "armv5" ];then
-              if [[ ${archs[i]} = mips* ]];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
-              else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
-              fi
+            if [[ ${archs[i]} = mips* ]];then
+              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
+            else
+              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
             fi
           done
 #      - name: darwin
 #        run: |
 #          archs=() # amd64 arm64
-#          for((i=0;i<0;i++));do
+#          for((i=0;i<${#arch[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-darwin-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-darwin-${archs[i]}
 #            chmod +x ./publish/clash.meta-darwin-${new_name[i]}
-#            if [ "${archs[i]}" != "armv5" ];then
-#              if [[ ${archs[i]} = mips* ]];then
-#                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
-#              else
-#                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
-#              fi
+#            if [[ ${archs[i]} = mips* ]];then
+#              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
+#            else
+#              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
 #            fi
 #          done
       - name: android
