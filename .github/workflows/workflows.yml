@@ -39,7 +39,7 @@ jobs:
       - name: linux
         run: |
           archs=(amd64 amd64-compatible armv7 arm64) # armv5 armv6 mips64 mips64le mips-softfloat mips-hardfloat mipsle-softfloat mipsle-hardfloat 386 riscv64 loong64
-          for((i=0;i<${#arch[@]};i++));do
+          for((i=0;i<${#archs[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
             chmod +x ./publish/clash.meta-linux-${archs[i]}
             if [ "${archs[i]}" != "armv5" ];then
@@ -53,7 +53,7 @@ jobs:
 #      - name: freebsd
 #        run: |
 #          archs=() # 386 amd64 arm64
-#          for((i=0;i<${#arch[@]};i++));do
+#          for((i=0;i<${#archs[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-freebsd-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-freebsd-${archs[i]}
 #            chmod +x ./publish/clash.meta-freebsd-${new_name[i]}
 #            if [ "${archs[i]}" != "armv5" ];then
@@ -67,7 +67,7 @@ jobs:
       - name: windows
         run: |
           archs=(amd64-compatible amd64) # 386 arm64 arm32v7
-          for((i=0;i<${#arch[@]};i++));do
+          for((i=0;i<${#archs[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-windows-${archs[i]}-${download_version}.zip
             unzip -o ${name}-windows-${archs[i]}-${download_version}.zip
             mv ${name}-windows-${archs[i]}.exe ./publish/clash.meta-windows-${archs[i]}.exe
@@ -81,7 +81,7 @@ jobs:
 #      - name: darwin
 #        run: |
 #          archs=() # amd64 arm64
-#          for((i=0;i<${#arch[@]};i++));do
+#          for((i=0;i<${#archs[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-darwin-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-darwin-${archs[i]}
 #            chmod +x ./publish/clash.meta-darwin-${new_name[i]}
 #            if [[ ${archs[i]} = mips* ]];then
