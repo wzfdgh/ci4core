@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
      inputs:
        ifrun:
+         description: "Entering anything to force to run the action"
          required: false
          default: ''
   push:
