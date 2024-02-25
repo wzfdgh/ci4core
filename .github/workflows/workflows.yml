@@ -3,7 +3,7 @@ on:
     - cron: 0 7,15,23 * * *
   workflow_dispatch:
      inputs:
-       run_inp:
+       ifrun:
          required: false
          default: ''
   push:
@@ -28,7 +28,7 @@ jobs:
             download_version=${download_tag}
           fi
           echo "download_version=${download_version}" >> ${GITHUB_ENV}
-          if [ "${run_inp}" = '' ];then
+          if [ "${INPUT_IFRUN}" = '' ];then
             if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '"' '/body/ {split($4, v, "=" ); print v[2]}')" = "${download_version}" ];then
               exit 1
             fi
