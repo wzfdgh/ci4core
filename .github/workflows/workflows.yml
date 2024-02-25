@@ -1,14 +1,12 @@
 on:
   schedule:
     - cron: 0 7,15,23 * * *
-
   workflow_dispatch:
      inputs:
        ifrun:
          description: "Entering anything to force to run the action"
          required: false
          default: ''
-
   push:
     branches:
       - main
@@ -84,7 +82,7 @@ jobs:
         run: |
           archs=(arm64-v8) # 386 amd64 armv7 arm64-v8
           for((i=0;i<${#archs[@]};i++));do
-            wget ${download_url}/${download_tag}/${name}-android-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
+            wget ${download_url}/${download_tag}/${name}-android-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-android-${archs[i]}
             chmod +x ./publish/clash.meta-android-${archs[i]}
             if [ "${archs[i]}" != "armv5" ];then
               if [[ ${archs[i]} = mips* ]];then
