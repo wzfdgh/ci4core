@@ -48,11 +48,12 @@ jobs:
           echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
           wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -Jx
           wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -Jx
-#          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
+          # wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
       - name: linux
         run: |
-          archs=(armv7 arm64 amd64-compatible amd64) # 386 amd64-compatible amd64 arm64 armv7 mips-hardfloat mips-softfloat mipsle-hardfloat mipsle-softfloat mips64 mips64le loong64 riscv64 s390x 386-go120 amd64-compatible-go120 amd64-go120
+          archs=(amd64-compatible amd64 armv7 arm64) # 386 amd64-compatible amd64 arm64 armv7 mips-hardfloat mips-softfloat mipsle-hardfloat mipsle-softfloat mips64 mips64le loong64 riscv64 s390x 386-go120 amd64-compatible-go120 amd64-go120
+          # rname=()
           for((i=0;i<${#archs[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
             chmod +x ./publish/clash.meta-linux-${archs[i]}
@@ -68,6 +69,7 @@ jobs:
       - name: windows
         run: |
           archs=(amd64-compatible amd64) # 386 amd64-compatible amd64 arm64 armv7 arm64
+          # rname=()
           for((i=0;i<${#archs[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-windows-${archs[i]}-${download_version}.zip
             unzip -o ${name}-windows-${archs[i]}-${download_version}.zip
@@ -83,14 +85,15 @@ jobs:
       - name: android
         run: |
           archs=(arm64-v8) # 386 amd64 armv7 arm64-v8
+          rname=(arm64)
           for((i=0;i<${#archs[@]};i++));do
-            wget ${download_url}/${download_tag}/${name}-android-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-android-${archs[i]}
-            chmod +x ./publish/clash.meta-android-${archs[i]}
+            wget ${download_url}/${download_tag}/${name}-android-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-android-${rname[i]}
+            chmod +x ./publish/clash.meta-android-${rname[i]}
             if [ "${archs[i]}" != "armv5" ];then
               if [[ ${archs[i]} = mips* ]];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-android-${archs[i]}
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-android-${rname[i]}
               else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-android-${archs[i]}
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-android-${rname[i]}
               fi
             fi
           done
@@ -98,6 +101,7 @@ jobs:
 #      - name: darwin
 #        run: |
 #          archs=() # arm64 amd64-compatible amd64 arm64-go120 amd64-compatible-go120 amd64-go120
+#          rname=()
 #          for((i=0;i<${#archs[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-darwin-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-darwin-${archs[i]}
 #            chmod +x ./publish/clash.meta-darwin-${new_name[i]}
@@ -111,6 +115,7 @@ jobs:
 #      - name: freebsd
 #        run: |
 #          archs=() # 386 amd64-compatible amd64 arm64
+#          rname=()
 #          for((i=0;i<${#archs[@]};i++));do
 #            wget ${download_url}/${download_tag}/${name}-freebsd-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-freebsd-${archs[i]}
 #            chmod +x ./publish/clash.meta-freebsd-${new_name[i]}
