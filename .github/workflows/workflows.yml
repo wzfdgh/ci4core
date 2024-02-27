@@ -52,7 +52,7 @@ jobs:
 
       - name: linux
         run: |
-          archs=(amd64-compatible amd64 armv7 arm64) # 386 amd64-compatible amd64 arm64 armv7 mips-hardfloat mips-softfloat mipsle-hardfloat mipsle-softfloat mips64 mips64le loong64 riscv64 s390x 386-go120 amd64-compatible-go120 amd64-go120
+          archs=(amd64-compatible amd64 armv7 arm64) # 386 amd64-compatible amd64 arm64 armv7 mips-hardfloat mips-softfloat mipsle-hardfloat mipsle-softfloat mips64 mips64le loong64-abi1 loong64-abi2 riscv64 s390x 386-go120 amd64-compatible-go120 amd64-go120
           # rname=()
           for((i=0;i<${#archs[@]};i++));do
             wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
@@ -166,9 +166,6 @@ jobs:
             curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${file}"
           done
 
-  Cleanup:
-    runs-on: ubuntu-latest
-    steps:
       - name: Cleanup Workflow
         uses: Mattraks/delete-workflow-runs@main
         with:
