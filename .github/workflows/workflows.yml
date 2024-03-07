@@ -1,12 +1,12 @@
 on:
   schedule:
-    - cron: 0 7,23 * * *
+    - cron: 0 15 * * *
   workflow_dispatch:
-     inputs:
-       ifrun:
-         description: "Entering anything to force to run the action"
-         required: false
-         default: ''
+    inputs:
+      ifrun:
+        description: "Entering anything to force to run the action"
+        required: false
+        default: ''
   push:
     branches:
       - main
@@ -17,13 +17,70 @@ env:
   name: mihomo
   download_url: https://github.com/MetaCubeX/mihomo/releases/download
 
-jobs:
-  Action:
-    runs-on: ubuntu-latest
-    steps:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
-      - name: Checkout
-        uses: actions/checkout@v3
+jobs:
+  Run:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+       jobs:
+          # - { os: darwin, arch: arm64, rname: '' }
+          # - { os: darwin, arch: amd64-compatible, rname: '' }
+          # - { os: darwin, arch: amd64, rname: '' }
+
+          # - { os: linux, arch: '386', rname: '' }
+          - { os: linux, arch: amd64-compatible, rname: '' }
+          - { os: linux, arch: amd64, rname: '' }
+          - { os: linux, arch: arm64, rname: '' }
+          - { os: linux, arch: armv7, rname: '' }
+          # - { os: linux, arch: mips-hardfloat, rname: '' }
+          # - { os: linux, arch: mips-softfloat, rname: '' }
+          # - { os: linux, arch: mipsle-hardfloat, rname: '' }
+          # - { os: linux, arch: mipsle-softfloat, rname: '' }
+          # - { os: linux, arch: mips64, rname: '' }
+          # - { os: linux, arch: mips64le, rname: '' }
+          # - { os: linux, arch: loong64-abi1, rname: '' }
+          # - { os: linux, arch: loong64-abi2, rname: '' }
+          # - { os: linux, arch: riscv64, rname: '' }
+          # - { os: linux, arch: s390x, rname: '' }
+
+          # - { os: windows, arch: '386', rname: '' }
+          - { os: windows, arch: amd64-compatible, rname: '' }
+          - { os: windows, arch: amd64, rname: '' }
+          # - { os: windows, arch: armv7, rname: '' }
+          # - { os: windows, arch: arm64, rname: '' }
+
+          # - { os: freebsd, arch: '386', rname: '' }
+          # - { os: freebsd, arch: amd64-compatible, rname: '' }
+          # - { os: freebsd, arch: amd64, rname: '' }
+          # - { os: freebsd, arch: arm64, rname: '' }
+
+          # - { os: android, arch: '386', rname: '' }
+          # - { os: android, arch: amd64, rname: '' }
+          # - { os: android, arch: armv7, rname: '' }
+          - { os: android, arch: arm64-v8, rname: 'arm64' }
+
+          # Go 1.20 is the last release that will run on any release of Windows 7, 8, Server 2008 and Server 2012. Go 1.21 will require at least Windows 10 or Server 2016.
+          # - { os: windows, arch: '386-go120', rname: '' }
+          # - { os: windows, arch: amd64-compatible-go120, rname: '' }
+          # - { os: windows, arch: amd64-go120, rname: '' }
+
+          # Go 1.20 is the last release that will run on macOS 10.13 High Sierra or 10.14 Mojave. Go 1.21 will require macOS 10.15 Catalina or later.
+          # - { os: darwin, arch: arm64-go120, rname: '' }
+          # - { os: darwin, arch: amd64-compatible-go120, rname: '' }
+          # - { os: darwin, arch: amd64-go120, rname: '' }
+
+          # only for test
+          # - { os: linux, arch: '386-go120', rname: '' }
+          # - { os: linux, arch: amd64-compatible-go120, rname: '' }
+          # - { os: linux, arch: amd64-go120, rname: '' }
+
+          # https://github.com/MetaCubeX/mihomo/blob/Alpha/.github/workflows/build.yml#L29-L78
+
+    steps:
 
       - name: Get version
         run: |
@@ -32,14 +89,15 @@ jobs:
           else
             download_version=${download_tag}
           fi
-          echo "download_version=${download_version}" >> ${GITHUB_ENV}
+          echo "download_version=${download_version}" >> $GITHUB_ENV
           if [ "${INPUT_IFRUN}" = '' ];then
             if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '"' '/body/ {split($4, v, "=" ); print v[2]}')" = "${download_version}" ];then
               exit 1
             fi
           fi
-          echo "RUNTIME=$(TZ=Asia/Shanghai date +'%Y-%m-%d %H:%M')" >> $GITHUB_ENV
-          mkdir -p publish
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Download upx
         run: |
@@ -50,106 +108,66 @@ jobs:
           wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -Jx
           # wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
-      - name: linux
+      - name: Core
         run: |
-          archs=(amd64-compatible amd64 armv7 arm64) # 386 amd64-compatible amd64 arm64 armv7 mips-hardfloat mips-softfloat mipsle-hardfloat mipsle-softfloat mips64 mips64le loong64-abi1 loong64-abi2 riscv64 s390x 386-go120 amd64-compatible-go120 amd64-go120
-          # rname=()
-          for((i=0;i<${#archs[@]};i++));do
-            wget ${download_url}/${download_tag}/${name}-linux-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-linux-${archs[i]}
-            chmod +x ./publish/clash.meta-linux-${archs[i]}
-            if [ "${archs[i]}" != "armv5" ];then
-              if [[ ${archs[i]} = mips* ]];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-linux-${archs[i]}
-              else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-linux-${archs[i]}
-              fi
-            fi
-          done
-
-      - name: windows
-        run: |
-          archs=(amd64-compatible amd64) # 386 amd64-compatible amd64 arm64 armv7 arm64
-          # rname=()
-          for((i=0;i<${#archs[@]};i++));do
-            wget ${download_url}/${download_tag}/${name}-windows-${archs[i]}-${download_version}.zip
-            unzip -o ${name}-windows-${archs[i]}-${download_version}.zip
-            mv ${name}-windows-${archs[i]}.exe ./publish/clash.meta-windows-${archs[i]}.exe
-            chmod +x ./publish/clash.meta-windows-${archs[i]}.exe
-            if [[ ${archs[i]} = mips* ]];then
-              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
+          mkdir -p publish
+          if [ "${{matrix.jobs.os}}" = "windows" ]; then
+            wget ${download_url}/${download_tag}/${name}-windows-${{matrix.jobs.arch}}-${download_version}.zip
+            unzip -o ${name}-windows-${{matrix.jobs.arch}}-${download_version}.zip
+            mv ${name}-windows-${{matrix.jobs.arch}}.exe ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
+            chmod +x ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
+            if [[ "${{matrix.jobs.arch}}" = mips* ]];then
+              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
             else
-              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${archs[i]}.exe
+              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
             fi
-          done
-
-      - name: android
-        run: |
-          archs=(arm64-v8) # 386 amd64 armv7 arm64-v8
-          rname=(arm64)
-          for((i=0;i<${#archs[@]};i++));do
-            wget ${download_url}/${download_tag}/${name}-android-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-android-${rname[i]}
-            chmod +x ./publish/clash.meta-android-${rname[i]}
-            if [ "${archs[i]}" != "armv5" ];then
-              if [[ ${archs[i]} = mips* ]];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-android-${rname[i]}
+            if [ "${{matrix.jobs.rname}}" != '' ];then
+              mv ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe ./publish/clash.meta-windows-${{matrix.jobs.rname}}.exe
+            fi
+          else
+            wget ${download_url}/${download_tag}/${name}-${{matrix.jobs.os}}-${{matrix.jobs.arch}}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
+            chmod +x ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
+            if [ "${{matrix.jobs.arch}}" != "armv5" ];then
+              if [[ "${{matrix.jobs.arch}}" = mips* ]];then
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
               else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-android-${rname[i]}
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
               fi
             fi
-          done
+            if [ "${{matrix.jobs.rname}}" != '' ];then
+              mv ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}} ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.rname}}
+            fi
+          fi
+          echo -n "Core=${download_version} " > body.txt
+          echo -n "Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" >> body.txt
 
-#      - name: darwin
-#        run: |
-#          archs=() # arm64 amd64-compatible amd64 arm64-go120 amd64-compatible-go120 amd64-go120
-#          rname=()
-#          for((i=0;i<${#archs[@]};i++));do
-#            wget ${download_url}/${download_tag}/${name}-darwin-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-darwin-${archs[i]}
-#            chmod +x ./publish/clash.meta-darwin-${new_name[i]}
-#            if [[ ${archs[i]} = mips* ]];then
-#              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
-#            else
-#              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-darwin-${archs[i]}
-#            fi
-#          done
-
-#      - name: freebsd
-#        run: |
-#          archs=() # 386 amd64-compatible amd64 arm64
-#          rname=()
-#          for((i=0;i<${#archs[@]};i++));do
-#            wget ${download_url}/${download_tag}/${name}-freebsd-${archs[i]}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-freebsd-${archs[i]}
-#            chmod +x ./publish/clash.meta-freebsd-${new_name[i]}
-#            if [ "${archs[i]}" != "armv5" ];then
-#              if [[ ${archs[i]} = mips* ]];then
-#                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-freebsd-${archs[i]}
-#              else
-#                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-freebsd-${archs[i]}
-#              fi
-#            fi
-#          done
-
-      - name: Delete current release assets
-        uses: andreaswilli/delete-release-assets-action@v3.0.0
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag: latest
-          deleteOnlyFromDrafts: false
+          name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+          path: |
+            ./publish/*
+            body.txt
 
-      - name: Release and upload assets
-        id: upload_release
-        uses: svenstaro/upload-release-action@v2
+  Release:
+    permissions: write-all
+    needs: [Run]
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/download-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          release_name: latest
-          tag: latest
-          file_glob: true
-          overwrite: true
-          file: ./publish/*
-          body: "Core=${{ env.download_version }} Time=${{ env.RUNTIME }}"
+          path: publish/
+          merge-multiple: true
+
+      - name: Display structure of downloaded files
+        run: ls -R
+        working-directory: publish
 
       - name: Git push assets to "release" branch
         run: |
           cd publish || exit 1
+          mv body.txt ..
           git init
           git config --local user.name "github-actions[bot]"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -159,15 +177,18 @@ jobs:
           git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
           git push -f -u origin release
 
-      - name: Purge jsdelivr CDN
-        run: |
-          cd publish || exit 1
-          for file in $(ls); do
-            curl -i "https://purge.jsdelivr.net/gh/${{ github.repository }}@release/${file}"
-          done
-
-      - name: Cleanup Workflow
-        uses: Mattraks/delete-workflow-runs@main
+      - name: Delete current release assets
+        uses: andreaswilli/delete-release-assets-action@v4.0.0
         with:
-          retain_days: 0
-          keep_minimum_runs: 1
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: latest
+          deleteOnlyFromDrafts: false
+
+    - name: Upload Release
+      uses: softprops/action-gh-release@v1
+      if: ${{ success() }}
+      with:
+        tag_name: latest
+        files: publish/*
+        generate_release_notes: true
+        body_path: body.txt
