@@ -184,11 +184,11 @@ jobs:
           tag: latest
           deleteOnlyFromDrafts: false
 
-    - name: Upload Release
-      uses: softprops/action-gh-release@v1
-      if: ${{ success() }}
-      with:
-        tag_name: latest
-        files: publish/*
-        generate_release_notes: true
-        body_path: body.txt
+      - name: Upload Release
+        uses: softprops/action-gh-release@v1
+        if: ${{ success() }}
+        with:
+          tag_name: latest
+          files: publish/*
+          generate_release_notes: true
+          body_path: body.txt
