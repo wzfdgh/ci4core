@@ -138,16 +138,14 @@ jobs:
               mv ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}} ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.rname}}
             fi
           fi
-          echo -n "Core=${download_version} " > body.txt
-          echo -n "Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" >> body.txt
+          echo -n "Core=${download_version} " > ./publish/body.txt
+          echo -n "Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" >> ./publish/body.txt
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
-          path: |
-            publish/*
-            body.txt
+          path: ./publish/*
 
   Release:
     permissions: write-all
@@ -166,6 +164,7 @@ jobs:
 
       - name: Git push assets to "release" branch
         run: |
+          mv ./publish/body.txt .
           cd publish || exit 1
           git init
           git config --local user.name "github-actions[bot]"
@@ -188,6 +187,6 @@ jobs:
         if: ${{ success() }}
         with:
           tag_name: latest
-          files: publish/*
+          files: ./publish/*
           generate_release_notes: true
           body_path: body.txt
