@@ -146,7 +146,7 @@ jobs:
         with:
           name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
           path: |
-            ./publish/*
+            publish/*
             body.txt
 
   Release:
@@ -157,7 +157,7 @@ jobs:
 
       - uses: actions/download-artifact@v4
         with:
-          path: publish/
+          path: publish
           merge-multiple: true
 
       - name: Display structure of downloaded files
@@ -167,7 +167,6 @@ jobs:
       - name: Git push assets to "release" branch
         run: |
           cd publish || exit 1
-          mv body.txt ..
           git init
           git config --local user.name "github-actions[bot]"
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -185,9 +184,10 @@ jobs:
           deleteOnlyFromDrafts: false
 
       - name: Upload Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v0.1.15
         if: ${{ success() }}
         with:
           tag_name: latest
-          files: ./publish/*
+          files: publish/*
+          generate_release_notes: true
           body_path: body.txt
