@@ -91,7 +91,7 @@ jobs:
           fi
           echo "download_version=${download_version}" >> $GITHUB_ENV
           if [ "${INPUT_IFRUN}" = '' ];then
-            if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '"' '/body/ {split($4, v, "=" ); print v[2]}')" = "${download_version}" ];then
+            if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
               exit 1
             fi
           fi
