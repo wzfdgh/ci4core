@@ -35,6 +35,8 @@ jobs:
           - { os: linux, arch: amd64-compatible, rname: '' }
           - { os: linux, arch: amd64, rname: '' }
           - { os: linux, arch: arm64, rname: '' }
+          # - { os: linux, arch: armv5, rname: '' }
+          # - { os: linux, arch: armv6, rname: '' }
           - { os: linux, arch: armv7, rname: '' }
           # - { os: linux, arch: mips-hardfloat, rname: '' }
           # - { os: linux, arch: mips-softfloat, rname: '' }
