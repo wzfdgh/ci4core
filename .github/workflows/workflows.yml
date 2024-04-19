@@ -80,7 +80,7 @@ jobs:
           # - { os: linux, arch: amd64-compatible-go120, rname: '' }
           # - { os: linux, arch: amd64-go120, rname: '' }
 
-          # https://github.com/MetaCubeX/mihomo/blob/Alpha/.github/workflows/build.yml#L29-L78
+          # https://github.com/MetaCubeX/mihomo/blob/Alpha/.github/workflows/build.yml#L29-L80
 
     steps:
 
