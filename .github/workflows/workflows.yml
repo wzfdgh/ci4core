@@ -3,10 +3,11 @@ on:
     - cron: 0 15 * * *
   workflow_dispatch:
     inputs:
-      ifrun:
-        description: "Entering anything to force to run the action"
+      forcerun:
+        type: boolean
+        description: Force to run
+        default: false
         required: false
-        default: ''
   push:
     branches:
       - main
@@ -22,8 +23,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  Run:
+  Alpha:
     runs-on: ubuntu-latest
+    outputs:
+      status: ${{ steps.release.outputs.status }}
     strategy:
       matrix:
        jobs:
@@ -65,10 +68,30 @@ jobs:
           # - { os: android, arch: armv7, rname: '' }
           - { os: android, arch: arm64-v8, rname: 'arm64' }
 
+          # https://github.com/MetaCubeX/mihomo/blob/Alpha/.github/workflows/build.yml#L32-L68
+          
+          # Go 1.22 with special patch can work on Windows 7
+          # https://github.com/MetaCubeX/go/commits/release-branch.go1.22/
+          # - { os: windows, arch: '386-go122', rname: '' }
+          # - { os: windows, arch: amd64-compatible-go122, rname: '' }
+          # - { os: windows, arch: amd64-go122, rname: '' }
+
+          # Go 1.21 can revert commit `9e4385` to work on Windows 7
+          # https://github.com/golang/go/issues/64622#issuecomment-1847475161
+          # (OR we can just use golang1.21.4 which unneeded any patch)
+          # - { os: windows, arch: '386-go121', rname: '' }
+          # - { os: windows, arch: amd64-compatible-go121, rname: '' }
+          # - { os: windows, arch: amd64-go121, rname: '' }
+
           # Go 1.20 is the last release that will run on any release of Windows 7, 8, Server 2008 and Server 2012. Go 1.21 will require at least Windows 10 or Server 2016.
           # - { os: windows, arch: '386-go120', rname: '' }
           # - { os: windows, arch: amd64-compatible-go120, rname: '' }
           # - { os: windows, arch: amd64-go120, rname: '' }
+
+          # Go 1.22 is the last release that will run on macOS 10.15 Catalina. Go 1.23 will require macOS 11 Big Sur or later.
+          # - { os: darwin, arch: arm64-go122, rname: '' }
+          # - { os: darwin, arch: amd64-compatible-go122, rname: '' }
+          # - { os: darwin, arch: amd64-go122, rname: '' }
 
           # Go 1.20 is the last release that will run on macOS 10.13 High Sierra or 10.14 Mojave. Go 1.21 will require macOS 10.15 Catalina or later.
           # - { os: darwin, arch: arm64-go120, rname: '' }
@@ -80,11 +103,10 @@ jobs:
           # - { os: linux, arch: amd64-compatible-go120, rname: '' }
           # - { os: linux, arch: amd64-go120, rname: '' }
 
-          # https://github.com/MetaCubeX/mihomo/blob/Alpha/.github/workflows/build.yml#L29-L80
-
     steps:
 
       - name: Get version
+        id: check
         run: |
           if [ "${download_tag}" = "Prerelease-Alpha" ] || [ "${download_tag}" = "Prerelease-Beta" ];then
             download_version=$(curl -sSL ${download_url}/Prerelease-Alpha/version.txt)
@@ -92,16 +114,16 @@ jobs:
             download_version=${download_tag}
           fi
           echo "download_version=${download_version}" >> $GITHUB_ENV
-          if [ "${INPUT_IFRUN}" = '' ];then
-            if [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
-              exit 1
-            fi
+          if [ "${INPUT_FORCERUN}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
+             echo "status=cancel" >> $GITHUB_OUTPUT
           fi
 
       - name: Checkout
+        if: steps.check.outputs.status != 'cancel'
         uses: actions/checkout@v4
 
       - name: Download upx
+        if: steps.check.outputs.status != 'cancel'
         run: |
           upx_tag=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}')
           upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}' | awk -F 'v' '{print $2}')
@@ -111,6 +133,7 @@ jobs:
           # wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
       - name: Core
+        if: steps.check.outputs.status != 'cancel'
         run: |
           mkdir -p publish
           if [ "${{matrix.jobs.os}}" = "windows" ]; then
@@ -140,18 +163,24 @@ jobs:
               mv ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}} ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.rname}}
             fi
           fi
-          echo -n "Core=${download_version} " > ./publish/body.txt
-          echo -n "Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" >> ./publish/body.txt
+          echo -n "Core=${download_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > ./publish/body.txt
 
       - name: Archive production artifacts
+        if: steps.check.outputs.status != 'cancel'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
           path: ./publish/*
 
+      - name: Cancel Release
+        id: release
+        if: steps.check.outputs.status == 'cancel'
+        run: |
+          echo "status=cancel" >> $GITHUB_OUTPUT
+
   Release:
-    permissions: write-all
-    needs: [Run]
+    needs: [Alpha]
+    if: needs.Alpha.outputs.status != 'cancel'
     runs-on: ubuntu-latest
     steps:
 
@@ -186,7 +215,6 @@ jobs:
 
       - name: Upload Release
         uses: softprops/action-gh-release@v0.1.15
-        if: ${{ success() }}
         with:
           tag_name: latest
           files: ./publish/*
