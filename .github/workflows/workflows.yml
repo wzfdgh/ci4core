@@ -114,7 +114,7 @@ jobs:
             download_version=${download_tag}
           fi
           echo "download_version=${download_version}" >> $GITHUB_ENV
-          if [ "${INPUT_FORCERUN}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
+          if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
              echo "status=cancel" >> $GITHUB_OUTPUT
           fi
 
