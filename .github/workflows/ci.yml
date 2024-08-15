@@ -1,3 +1,4 @@
+name: Automatic core compression
 on:
   schedule:
     - cron: 0 15 * * *
@@ -5,12 +6,14 @@ on:
     inputs:
       forcerun:
         type: boolean
-        description: Force to run
+        description: Forcing a workflow
         default: false
-        required: false
+        required: true
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/ci.yml
 
 env:
   download_tag: Prerelease-Alpha
@@ -203,13 +206,13 @@ jobs:
           git checkout -b release
           git add .
           git commit -m release
-          git remote add origin "https://${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}"
+          git remote add origin "https://${{ github.actor }}:${{ secrets.github_token }}@github.com/${{ github.repository }}"
           git push -f -u origin release
 
       - name: Delete current release assets
         uses: andreaswilli/delete-release-assets-action@v4.0.0
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.github_token }}
           tag: latest
           deleteOnlyFromDrafts: false
 
