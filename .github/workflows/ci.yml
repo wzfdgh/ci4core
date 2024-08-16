@@ -29,7 +29,7 @@ jobs:
   Alpha:
     runs-on: ubuntu-latest
     outputs:
-      status: ${{ steps.release.outputs.status }}
+      status: ${{ steps.check.outputs.status }}
     strategy:
       matrix:
        jobs:
@@ -108,6 +108,9 @@ jobs:
 
     steps:
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Get version
         id: check
         run: |
@@ -120,10 +123,6 @@ jobs:
           if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
              echo "status=cancel" >> $GITHUB_OUTPUT
           fi
-
-      - name: Checkout
-        if: steps.check.outputs.status != 'cancel'
-        uses: actions/checkout@v4
 
       - name: Download upx
         if: steps.check.outputs.status != 'cancel'
@@ -174,12 +173,6 @@ jobs:
         with:
           name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
           path: ./publish/*
-
-      - name: Cancel Release
-        id: release
-        if: steps.check.outputs.status == 'cancel'
-        run: |
-          echo "status=cancel" >> $GITHUB_OUTPUT
 
   Release:
     needs: [Alpha]
