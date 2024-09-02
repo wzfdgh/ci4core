@@ -131,8 +131,8 @@ jobs:
           upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}' | awk -F 'v' '{print $2}')
           echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
           wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -Jx
-          wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -Jx
-          # wget https://github.com/wzfdgh/ClashRepo/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
+          wget https://github.com/wzfdgh/ci4core/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -Jx
+          # wget https://github.com/wzfdgh/ci4core/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
       - name: Core
         if: steps.check.outputs.status != 'cancel'
