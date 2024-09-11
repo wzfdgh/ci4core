@@ -121,7 +121,7 @@ jobs:
           fi
           echo "download_version=${download_version}" >> $GITHUB_ENV
           if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
-             echo "status=cancel" >> $GITHUB_OUTPUT
+            echo "status=cancel" >> $GITHUB_OUTPUT
           fi
 
       - name: Download upx
@@ -131,38 +131,33 @@ jobs:
           upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F '"' '/tag_name/ {print $4}' | awk -F 'v' '{print $2}')
           echo "upx_tag=${upx_tag}" >> ${GITHUB_ENV} && echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
           wget https://github.com/upx/upx/releases/download/${upx_tag}/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -Jx
-          wget https://github.com/wzfdgh/ci4core/raw/upx/upx-3.95-amd64_linux.tar.xz -O - | tar -Jx
           # wget https://github.com/wzfdgh/ci4core/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
       - name: Core
         if: steps.check.outputs.status != 'cancel'
         run: |
           mkdir -p publish
-          if [ "${{matrix.jobs.os}}" = "windows" ]; then
-            wget ${download_url}/${download_tag}/${name}-windows-${{matrix.jobs.arch}}-${download_version}.zip
-            unzip -o ${name}-windows-${{matrix.jobs.arch}}-${download_version}.zip
-            mv ${name}-windows-${{matrix.jobs.arch}}.exe ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
-            chmod +x ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
-            if [[ "${{matrix.jobs.arch}}" = mips* ]];then
-              ./upx-3.93-amd64_linux/upx ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
-            else
-              ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe
-            fi
-            if [ "${{matrix.jobs.rname}}" != '' ];then
-              mv ./publish/clash.meta-windows-${{matrix.jobs.arch}}.exe ./publish/clash.meta-windows-${{matrix.jobs.rname}}.exe
+          if [ "${{ matrix.jobs.os }}" = "windows" ]; then
+            wget ${download_url}/${download_tag}/${name}-windows-${{ matrix.jobs.arch }}-${download_version}.zip
+            unzip -o ${name}-windows-${{ matrix.jobs.arch }}-${download_version}.zip
+            mv ${name}-windows-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
+            chmod +x ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
+            ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
+            if [ "${{ matrix.jobs.rname }}" != '' ];then
+              mv ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-windows-${{ matrix.jobs.rname }}.exe
             fi
           else
-            wget ${download_url}/${download_tag}/${name}-${{matrix.jobs.os}}-${{matrix.jobs.arch}}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
-            chmod +x ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
-            if [ "${{matrix.jobs.arch}}" != "armv5" ];then
-              if [[ "${{matrix.jobs.arch}}" = mips* ]];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
+            wget ${download_url}/${download_tag}/${name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+            chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+            if [ "${{ matrix.jobs.arch }}" != "armv5" ];then
+              if [ "${{ matrix.jobs.arch }}" = "mips*" ];then
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
               else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}}
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
               fi
             fi
-            if [ "${{matrix.jobs.rname}}" != '' ];then
-              mv ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.arch}} ./publish/clash.meta-${{matrix.jobs.os}}-${{matrix.jobs.rname}}
+            if [ "${{ matrix.jobs.rname }}" != '' ];then
+              mv ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }} ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.rname }}
             fi
           fi
           echo -n "Core=${download_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > ./publish/body.txt
