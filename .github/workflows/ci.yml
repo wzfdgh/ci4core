@@ -147,7 +147,7 @@ jobs:
               mv ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-windows-${{ matrix.jobs.rname }}.exe
             fi
           else
-            wget ${download_url}/${download_tag}/${name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gunzip -c > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+            wget ${download_url}/${download_tag}/${name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gzip -dc > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
             chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
             if [ "${{ matrix.jobs.arch }}" != "armv5" ];then
               if [ "${{ matrix.jobs.arch }}" = "mips*" ];then
