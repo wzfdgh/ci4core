@@ -18,8 +18,8 @@ on:
 env:
   download_tag: Prerelease-Alpha
   download_version: ''
-  name: mihomo
-  download_url: https://github.com/MetaCubeX/mihomo/releases/download
+  download_name: mihomo
+  download_url: https://github.com/MetaCubeX/mihomo/releases
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,13 +35,15 @@ jobs:
       - name: Get version
         id: check
         run: |
-          if [ "${download_tag}" = "Prerelease-Alpha" ] || [ "${download_tag}" = "Prerelease-Beta" ];then
-            download_version=$(curl -sSL ${download_url}/Prerelease-Alpha/version.txt)
+          if [ "${download_tag}" = "Prerelease-Alpha" ];then
+            download_version=$(curl -sSL ${download_url}/download/${download_tag}/version.txt)
+          elif [ "${download_tag}" = "latest" ];then
+            download_version=$(curl -sSL ${download_url}/${download_tag}/download/version.txt)
           else
             download_version=${download_tag}
           fi
           echo "version=${download_version}" >> $GITHUB_OUTPUT
-          if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ClashRepo/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
+          if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ci4core/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
             echo "status=cancel" >> $GITHUB_OUTPUT
           fi
 
@@ -144,16 +146,16 @@ jobs:
         run: |
           mkdir -p publish
           if [ "${{ matrix.jobs.os }}" = "windows" ]; then
-            wget ${download_url}/${download_tag}/${name}-windows-${{ matrix.jobs.arch }}-${download_version}.zip
-            unzip -o ${name}-windows-${{ matrix.jobs.arch }}-${download_version}.zip
-            mv ${name}-windows-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
-            chmod +x ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
-            ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe
+            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.zip
+            unzip -o ${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.zip
+            mv ${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
+            chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
+            ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
             if [ "${{ matrix.jobs.rname }}" != '' ];then
-              mv ./publish/clash.meta-windows-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-windows-${{ matrix.jobs.rname }}.exe
+              mv ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.rname }}.exe
             fi
           else
-            wget ${download_url}/${download_tag}/${name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gzip -dc > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gzip -dc > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
             chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
             if [ "${{ matrix.jobs.arch }}" != "armv5" ];then
               if [ "${{ matrix.jobs.arch }}" = "mips*" ];then
