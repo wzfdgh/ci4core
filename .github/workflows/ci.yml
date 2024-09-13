@@ -15,22 +15,23 @@ on:
     paths:
       - .github/workflows/ci.yml
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   download_tag: Prerelease-Alpha
   download_version: ''
   download_name: mihomo
   download_url: https://github.com/MetaCubeX/mihomo/releases
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   Check:
     runs-on: ubuntu-latest
     outputs:
       status: ${{ steps.check.outputs.status }}
-      version: ${{ steps.check.outputs.version }}
+      download_version: ${{ steps.check.outputs.download_version }}
+      upx_version: ${{ steps.check.outputs.upx_version }}
     steps:
       - name: Get version
         id: check
@@ -42,7 +43,9 @@ jobs:
           else
             download_version=${download_tag}
           fi
-          echo "version=${download_version}" >> $GITHUB_OUTPUT
+          echo "download_version=${download_version}" >> $GITHUB_OUTPUT
+          upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F'"|v' '/tag_name/ {print $5}')
+          echo "upx_version=${upx_version}" >> $GITHUB_OUTPUT
           if [ "${{ inputs.forcerun }}" != 'true' ] && [ "$(curl -sSL https://api.github.com/repos/wzfdgh/ci4core/releases/latest | awk -F '=' '/body/ {split($2, v, " "); print v[1]}')" = "${download_version}" ];then
             echo "status=cancel" >> $GITHUB_OUTPUT
           fi
@@ -52,12 +55,13 @@ jobs:
     needs: [Check]
     if: needs.Check.outputs.status != 'cancel'
     env:
-      download_version: ${{ needs.Check.outputs.version }}
+      download_version: ${{ needs.Check.outputs.download_version }}
+      upx_version: ${{ needs.Check.outputs.upx_version }}
     outputs:
-      version: ${{ needs.Check.outputs.version }}
+      download_version: ${{ needs.Check.outputs.download_version }}
     strategy:
       matrix:
-       jobs:
+        include:
           # - { os: darwin, arch: arm64, rname: '' }
           # - { os: darwin, arch: amd64-compatible, rname: '' }
           # - { os: darwin, arch: amd64, rname: '' }
@@ -137,48 +141,46 @@ jobs:
 
       - name: Download upx
         run: |
-          upx_version=$(curl -sSL https://api.github.com/repos/upx/upx/releases/latest | awk -F'"|v' '/tag_name/ {print $5}')
-          echo "upx_version=${upx_version}" >> ${GITHUB_ENV}
           wget https://github.com/upx/upx/releases/latest/download/upx-${upx_version}-amd64_linux.tar.xz -O - | tar -Jx
           # wget https://github.com/wzfdgh/ci4core/raw/upx/upx-3.93-amd64_linux.tar.xz -O - | tar -Jx
 
       - name: Download and compress core
         run: |
           mkdir -p publish
-          if [ "${{ matrix.jobs.os }}" = "windows" ]; then
-            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.zip
-            unzip -o ${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.zip
-            mv ${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
-            chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
-            ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe
-            if [ "${{ matrix.jobs.rname }}" != '' ];then
-              mv ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}.exe ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.rname }}.exe
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.os }}-${{ matrix.arch }}-${download_version}.zip
+            unzip -o ${download_name}-${{ matrix.os }}-${{ matrix.arch }}-${download_version}.zip
+            mv ${download_name}-${{ matrix.os }}-${{ matrix.arch }}.exe ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}.exe
+            chmod +x ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}.exe
+            ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}.exe
+            if [ "${{ matrix.rname }}" != '' ];then
+              mv ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}.exe ./publish/clash.meta-${{ matrix.os }}-${{ matrix.rname }}.exe
             fi
           else
-            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}-${download_version}.gz -O - | gzip -dc > ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
-            chmod +x ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
-            if [ "${{ matrix.jobs.arch }}" != "armv5" ];then
-              if [ "${{ matrix.jobs.arch }}" = "mips*" ];then
-                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+            wget ${download_url}/download/${download_tag}/${download_name}-${{ matrix.os }}-${{ matrix.arch }}-${download_version}.gz -O - | gzip -dc > ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}
+            chmod +x ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}
+            if [ "${{ matrix.arch }}" != "armv5" ];then
+              if [ "${{ matrix.arch }}" = "mips*" ];then
+                ./upx-3.93-amd64_linux/upx ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}
               else
-                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+                ./upx-${upx_version}-amd64_linux/upx ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }}
               fi
             fi
-            if [ "${{ matrix.jobs.rname }}" != '' ];then
-              mv ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.arch }} ./publish/clash.meta-${{ matrix.jobs.os }}-${{ matrix.jobs.rname }}
+            if [ "${{ matrix.rname }}" != '' ];then
+              mv ./publish/clash.meta-${{ matrix.os }}-${{ matrix.arch }} ./publish/clash.meta-${{ matrix.os }}-${{ matrix.rname }}
             fi
           fi
 
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.jobs.os }}-${{ matrix.jobs.arch }}
+          name: ${{ matrix.os }}-${{ matrix.arch }}
           path: ./publish/*
 
   Release:
     needs: [Core]
     env:
-      core_version: ${{ needs.Core.outputs.version }}
+      download_version: ${{ needs.Core.outputs.download_version }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
@@ -187,7 +189,7 @@ jobs:
           merge-multiple: true
 
       - name: Generate body.txt
-        run: echo -n "Core=${core_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > ./publish/body.txt
+        run: echo -n "Core=${download_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > ./publish/body.txt
 
       - name: Display structure of downloaded files
         run: ls -R
