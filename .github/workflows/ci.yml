@@ -189,7 +189,7 @@ jobs:
           merge-multiple: true
 
       - name: Generate body.txt
-        run: echo -n "Core=${download_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > ./publish/body.txt
+        run: echo -n "Core=${download_version} Time=`TZ='Asia/Shanghai' date "+%F %R %z"`" > body.txt
 
       - name: Display structure of downloaded files
         run: ls -R
@@ -197,7 +197,6 @@ jobs:
 
       - name: Git push assets to "release" branch
         run: |
-          mv ./publish/body.txt .
           cd publish || exit 1
           git init
           git config --local user.name "github-actions[bot]"
