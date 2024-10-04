@@ -121,7 +121,7 @@ jobs:
           fi
           echo "download_version=${download_version}" >> $GITHUB_OUTPUT
           echo "download_version=${download_version}" >> $GITHUB_ENV
-          if [ "${{ inputs.force }}" = 'false' ] && [ "$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/wzfdgh/ci4core/releases/latest | awk -F'=| ' '/body/ {print $5}')" = "${download_version}" ];then
+          if [ "${{ inputs.force }}" != 'true' ] && [ "$(curl -sSL -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/wzfdgh/ci4core/releases/latest | awk -F'=| ' '/body/ {print $5}')" = "${download_version}" ];then
             echo "cancel=true" >> $GITHUB_OUTPUT
             echo "cancel=true" >> $GITHUB_ENV
           fi
